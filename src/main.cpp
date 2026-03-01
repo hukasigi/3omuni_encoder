@@ -52,7 +52,7 @@ double y     = 0.0; // mm
 double theta = 0.0; // rad
 
 // 目標
-double targetX     = 100.0; // 右へ100mm
+double targetX     = 0.0;
 double targetY     = 0.0;
 double targetTheta = 0.0;
 
@@ -93,6 +93,12 @@ void forwardKinematics(double w1, double w2, double w3, double& vx, double& vy, 
     omega = (WHEEL_RADIUS / (3.0 * ROBOT_RADIUS)) * (w1 + w2 + w3);
 }
 
+bool risingEdge(bool currentState, bool& prevState) {
+    bool triggered = (currentState && !prevState);
+    prevState      = currentState;
+    return triggered;
+}
+
 void setup() {
     Serial.begin(115200);
     PS4.begin("08:D1:F9:37:41:F2");
@@ -116,6 +122,8 @@ void setup() {
     pinMode(PIN_DIR_1, OUTPUT);
     pinMode(PIN_DIR_2, OUTPUT);
     pinMode(PIN_DIR_3, OUTPUT);
+
+    last = micros();
 }
 
 void loop() {
@@ -123,6 +131,16 @@ void loop() {
     if (now - last < CONTROL_CYCLE) return;
     double dt = (now - last) * 1.e-6;
     last      = now;
+
+    static bool prevRight = false;
+    static bool prevLeft  = false;
+    static bool prevUp    = false;
+    static bool prevDown  = false;
+
+    if (risingEdge(PS4.Right(), prevRight)) targetX += 100;
+    if (risingEdge(PS4.Left(), prevLeft)) targetX -= 100;
+    if (risingEdge(PS4.Up(), prevUp)) targetY += 100;
+    if (risingEdge(PS4.Down(), prevDown)) targetY -= 100;
 
     long c1 = enc1.getCount();
     long c2 = enc2.getCount();
